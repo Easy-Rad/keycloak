@@ -1,0 +1,56 @@
+services:
+  keycloak-db:
+    image: postgres:18-alpine
+    volumes:
+      - keycloak-db-data:/var/lib/postgresql
+    environment:
+      POSTGRES_USER: ${KEYCLOAK_DB_USER:?}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?}
+      POSTGRES_DB: ${KEYCLOAK_DB:?}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}'
+      interval: 15s
+      timeout: 20s
+      retries: 10
+  keycloak:
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    build:
+    ports:
+      - "8080:8080"
+    environment:
+      SERVICE_URL_KEYCLOAK_8080: ''
+      TZ: ${TIMEZONE:-UTC}
+      KC_HOSTNAME: ${SERVICE_URL_KEYCLOAK:?}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db/${KEYCLOAK_DB:-keycloak}
+      KC_DB_USERNAME: ${SERVICE_USER_DATABASE:?}
+      KC_DB_PASSWORD: ${SERVICE_PASSWORD_64_DATABASE:?}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${SERVICE_USER_ADMIN:?}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${SERVICE_PASSWORD_ADMIN:?}
+      KC_HTTP_ENABLED: ${KC_HTTP_ENABLED:-true}
+      KC_HEALTH_ENABLED: ${KC_HEALTH_ENABLED:-true}
+      KC_METRICS_ENABLED: ${KC_METRICS_ENABLED:-true}
+      KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:-xforwarded}
+      JAVA_OPTS_APPEND: -Djava.security.disableSystemPropertiesFile=true
+    command: [ 'start', '--optimized' ]
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "exec 3<>/dev/tcp/127.0.0.1/9000; echo -e 'GET /health/ready HTTP/1.1\r
+
+          Host: localhost:9000\r
+
+          Connection: close\r
+
+          \r
+
+          ' >&3;cat <&3 | grep -q '\"status\": \"UP\"' && exit 0 || exit 1"
+      interval: 15s
+      timeout: 20s
+      retries: 10
+volumes:
+  keycloak-db-data:
