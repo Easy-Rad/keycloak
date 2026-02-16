@@ -4,9 +4,9 @@ services:
     volumes:
       - keycloak-db-data:/var/lib/postgresql
     environment:
-      POSTGRES_USER: ${KEYCLOAK_DB_USER:?}
-      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?}
-      POSTGRES_DB: ${KEYCLOAK_DB:?}
+      POSTGRES_USER: ${SERVICE_USER_DATABASE:?}
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_64_DATABASE:?}
+      POSTGRES_DB: ${KEYCLOAK_DB:-keycloak}
     healthcheck:
       test:
         - CMD-SHELL
